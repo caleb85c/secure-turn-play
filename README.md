@@ -79,15 +79,15 @@ Create a `.env` file in the root directory with the following variables:
 
 ```env
 # Chain Configuration
-NEXT_PUBLIC_CHAIN_ID=11155111
-NEXT_PUBLIC_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
+VITE_CHAIN_ID=11155111
+VITE_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
 
 # Wallet Connect Configuration
-NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=YOUR_WALLET_CONNECT_PROJECT_ID
+VITE_WALLET_CONNECT_PROJECT_ID=YOUR_WALLET_CONNECT_PROJECT_ID
 
 # Infura Configuration (Optional)
-NEXT_PUBLIC_INFURA_API_KEY=YOUR_INFURA_API_KEY
-NEXT_PUBLIC_RPC_URL=https://1rpc.io/sepolia
+VITE_INFURA_API_KEY=YOUR_INFURA_API_KEY
+VITE_RPC_URL=https://1rpc.io/sepolia
 ```
 
 ## How It Works
