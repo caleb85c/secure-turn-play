@@ -1,4 +1,4 @@
-import { useContract, useContractWrite, useContractRead, useContractEvent } from 'wagmi';
+import { useWriteContract, useReadContract, useWatchContractEvent } from 'wagmi';
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
 
@@ -103,31 +103,40 @@ const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Replac
 export function useSecureTurnPlayContract() {
   const { address } = useAccount();
   
-  const contract = useContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
+  const createGame = useWriteContract({
+    mutation: {
+      onSuccess: (hash) => {
+        console.log('Game created:', hash);
+      },
+      onError: (error) => {
+        console.error('Failed to create game:', error);
+      },
+    },
   });
 
-  const createGame = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'createGame',
+  const makeMove = useWriteContract({
+    mutation: {
+      onSuccess: (hash) => {
+        console.log('Move submitted:', hash);
+      },
+      onError: (error) => {
+        console.error('Failed to make move:', error);
+      },
+    },
   });
 
-  const makeMove = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'makeMove',
-  });
-
-  const completeGame = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'completeGame',
+  const completeGame = useWriteContract({
+    mutation: {
+      onSuccess: (hash) => {
+        console.log('Game completed:', hash);
+      },
+      onError: (error) => {
+        console.error('Failed to complete game:', error);
+      },
+    },
   });
 
   return {
-    contract,
     createGame,
     makeMove,
     completeGame,
@@ -143,7 +152,10 @@ export function useCreateGame() {
   const createNewGame = async (player2: string, gameType: string, duration: number) => {
     try {
       setIsCreating(true);
-      const result = await createGame.writeAsync({
+      const result = await createGame.writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'createGame',
         args: [player2 as `0x${string}`, gameType, BigInt(duration)],
       });
       return result;
@@ -158,7 +170,7 @@ export function useCreateGame() {
   return {
     createNewGame,
     isCreating,
-    isLoading: createGame.isLoading,
+    isLoading: createGame.isPending,
     error: createGame.error,
   };
 }
@@ -171,7 +183,10 @@ export function useMakeMove() {
   const submitEncryptedMove = async (gameId: number, encryptedMove: string, proof: string) => {
     try {
       setIsMakingMove(true);
-      const result = await makeMove.writeAsync({
+      const result = await makeMove.writeContractAsync({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'makeMove',
         args: [BigInt(gameId), encryptedMove as `0x${string}`, proof as `0x${string}`],
       });
       return result;
@@ -186,7 +201,7 @@ export function useMakeMove() {
   return {
     submitEncryptedMove,
     isMakingMove,
-    isLoading: makeMove.isLoading,
+    isLoading: makeMove.isPending,
     error: makeMove.error,
   };
 }
@@ -195,30 +210,30 @@ export function useMakeMove() {
 export function useGameEvents() {
   const [gameEvents, setGameEvents] = useState<any[]>([]);
 
-  useContractEvent({
+  useWatchContractEvent({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     eventName: 'GameCreated',
-    listener: (event) => {
-      setGameEvents(prev => [...prev, { type: 'GameCreated', data: event }]);
+    onLogs: (logs) => {
+      setGameEvents(prev => [...prev, { type: 'GameCreated', data: logs }]);
     },
   });
 
-  useContractEvent({
+  useWatchContractEvent({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     eventName: 'MoveMade',
-    listener: (event) => {
-      setGameEvents(prev => [...prev, { type: 'MoveMade', data: event }]);
+    onLogs: (logs) => {
+      setGameEvents(prev => [...prev, { type: 'MoveMade', data: logs }]);
     },
   });
 
-  useContractEvent({
+  useWatchContractEvent({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     eventName: 'GameCompleted',
-    listener: (event) => {
-      setGameEvents(prev => [...prev, { type: 'GameCompleted', data: event }]);
+    onLogs: (logs) => {
+      setGameEvents(prev => [...prev, { type: 'GameCompleted', data: logs }]);
     },
   });
 
@@ -226,7 +241,7 @@ export function useGameEvents() {
 }
 
 export function useGameInfo(gameId: number) {
-  const { data, isLoading, error } = useContractRead({
+  const { data, isLoading, error } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getGameInfo',
