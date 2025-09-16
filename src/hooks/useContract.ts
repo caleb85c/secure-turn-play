@@ -1,5 +1,6 @@
-import { useContract, useContractWrite, useContractRead } from 'wagmi';
+import { useContract, useContractWrite, useContractRead, useContractEvent } from 'wagmi';
 import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
 
 // Contract ABI - This would be generated from the compiled contract
 const CONTRACT_ABI = [
@@ -32,12 +33,34 @@ const CONTRACT_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "gameId", "type": "uint256"},
+      {"indexed": true, "internalType": "address", "name": "winner", "type": "address"}
+    ],
+    "name": "GameCompleted",
+    "type": "event"
+  },
+  {
     "inputs": [
       {"internalType": "address", "name": "_player2", "type": "address"},
       {"internalType": "string", "name": "_gameType", "type": "string"},
       {"internalType": "uint256", "name": "_duration", "type": "uint256"}
     ],
     "name": "createGame",
+    "outputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "gameId", "type": "uint256"},
+      {"internalType": "bytes", "name": "encryptedMove", "type": "bytes"},
+      {"internalType": "bytes", "name": "inputProof", "type": "bytes"}
+    ],
+    "name": "makeMove",
     "outputs": [
       {"internalType": "uint256", "name": "", "type": "uint256"}
     ],
@@ -91,6 +114,12 @@ export function useSecureTurnPlayContract() {
     functionName: 'createGame',
   });
 
+  const makeMove = useContractWrite({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'makeMove',
+  });
+
   const completeGame = useContractWrite({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
@@ -100,9 +129,100 @@ export function useSecureTurnPlayContract() {
   return {
     contract,
     createGame,
+    makeMove,
     completeGame,
     isConnected: !!address,
   };
+}
+
+// Hook for creating a new game with encrypted data
+export function useCreateGame() {
+  const { createGame } = useSecureTurnPlayContract();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createNewGame = async (player2: string, gameType: string, duration: number) => {
+    try {
+      setIsCreating(true);
+      const result = await createGame.writeAsync({
+        args: [player2 as `0x${string}`, gameType, BigInt(duration)],
+      });
+      return result;
+    } catch (error) {
+      console.error('Error creating game:', error);
+      throw error;
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return {
+    createNewGame,
+    isCreating,
+    isLoading: createGame.isLoading,
+    error: createGame.error,
+  };
+}
+
+// Hook for making encrypted moves
+export function useMakeMove() {
+  const { makeMove } = useSecureTurnPlayContract();
+  const [isMakingMove, setIsMakingMove] = useState(false);
+
+  const submitEncryptedMove = async (gameId: number, encryptedMove: string, proof: string) => {
+    try {
+      setIsMakingMove(true);
+      const result = await makeMove.writeAsync({
+        args: [BigInt(gameId), encryptedMove as `0x${string}`, proof as `0x${string}`],
+      });
+      return result;
+    } catch (error) {
+      console.error('Error making move:', error);
+      throw error;
+    } finally {
+      setIsMakingMove(false);
+    }
+  };
+
+  return {
+    submitEncryptedMove,
+    isMakingMove,
+    isLoading: makeMove.isLoading,
+    error: makeMove.error,
+  };
+}
+
+// Hook for listening to game events
+export function useGameEvents() {
+  const [gameEvents, setGameEvents] = useState<any[]>([]);
+
+  useContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    eventName: 'GameCreated',
+    listener: (event) => {
+      setGameEvents(prev => [...prev, { type: 'GameCreated', data: event }]);
+    },
+  });
+
+  useContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    eventName: 'MoveMade',
+    listener: (event) => {
+      setGameEvents(prev => [...prev, { type: 'MoveMade', data: event }]);
+    },
+  });
+
+  useContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    eventName: 'GameCompleted',
+    listener: (event) => {
+      setGameEvents(prev => [...prev, { type: 'GameCompleted', data: event }]);
+    },
+  });
+
+  return gameEvents;
 }
 
 export function useGameInfo(gameId: number) {
