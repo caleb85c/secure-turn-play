@@ -80,7 +80,7 @@ Create a `.env` file in the root directory with the following variables:
 ```env
 # Chain Configuration
 VITE_CHAIN_ID=11155111
-VITE_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
+VITE_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID
 
 # Wallet Connect Configuration
 VITE_WALLET_CONNECT_PROJECT_ID=YOUR_WALLET_CONNECT_PROJECT_ID
